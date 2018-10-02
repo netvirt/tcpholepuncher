@@ -16,9 +16,9 @@ punchctl_CPPFLAGS = -DDEBUG
 punchctl_LDADD = $(lib_LTLIBRARIES) \
 	     $(libevent_LIBS) 
 
-noinst_PROGRAMS = setuptest
-setuptest_SOURCES = tests/setup_test.c
-setuptest_CFLAGS = -DDEBUG -g3 -O0
-setuptest_LDADD = $(lib_LTLIBRARIES) \
+noinst_PROGRAMS = tests/setuptest
+tests_setuptest_SOURCES = tests/setup_test.c
+tests_setuptest_CFLAGS = -DDEBUG -g3 -O0
+tests_setuptest_LDADD = $(lib_LTLIBRARIES) \
 	     $(libevent_LIBS) 
 EXTRA_DIST = m4/NOTES                                                           
