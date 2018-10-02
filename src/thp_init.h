@@ -1,0 +1,2 @@
+
+#define MSG "hello"

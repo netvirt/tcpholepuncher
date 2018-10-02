@@ -24,7 +24,7 @@ AC_CHECK_FILE(/dev/random,
 AC_CHECK_FILE(/dev/urandom,
 	      [AC_DEFINE(HAVE_DEVURAND, 1, [can use dev urandom])],[])
 	
-AC_CONFIG_SRCDIR([src/punchctl.c])
+AC_CONFIG_SRCDIR([punchctl.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
