@@ -1,6 +1,6 @@
 FROM debian:stretch
 
-MAINTAINER franck
+LABEL authors="franck"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LD_LIBRARY_PATH /lib:/usr/lib:/usr/local/lib
@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y \
 	libevent-dev \
 	ca-certificates \
 	checkinstall \
-	intltool
+	intltool \
+	valgrind
 
 ADD build.sh /opt/
 ADD entrypoint /opt/

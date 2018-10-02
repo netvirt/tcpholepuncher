@@ -4,4 +4,5 @@
 int main()
 {
     thp_print();
+    return 0;
 }
