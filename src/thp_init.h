@@ -1,1 +1,1 @@
-#define MSG "hello"
+#define MSG "hello INIT"

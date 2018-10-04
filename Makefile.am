@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4 --install     
 
 lib_LTLIBRARIES = libobj/libthp.la
-libobj_libthp_la_SOURCES =  src/thp_init.c 
+libobj_libthp_la_SOURCES =  src/log.c \
+							src/thp_init.c 
 							
 libobj_libthp_la_LIBADD = $(libevent_LIBS) \
 			  -lssl -lcrypto \
@@ -9,6 +10,7 @@ libobj_libthp_la_LIBADD = $(libevent_LIBS) \
 							
 libobj_libthp_la_LDFLAGS = -version-info 0:0
 include_HEADERS =   include/thp.h 
+
 
 bin_PROGRAMS = punchctl
 punchctl_SOURCES = punchctl.c
