@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <include/thp.h>
 
-#include <sys/queue.h>
+#include "queue.h"
 #include "log.h"
 
 #include "thp_init.h"
