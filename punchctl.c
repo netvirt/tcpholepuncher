@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <include/thp.h>
+#include <thp.h>
 
 int main()
 {

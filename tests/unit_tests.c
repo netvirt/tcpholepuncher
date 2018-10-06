@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <include/thp.h>
+#include <thp.h>
 
 static void unit_test_log_setup();
 static void unit_test_list_setup();

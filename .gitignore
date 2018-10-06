@@ -78,3 +78,6 @@ include/*.so
 include/*.Po
 include/*.Plo
 include/*.o
+
+
+tests/unittests
