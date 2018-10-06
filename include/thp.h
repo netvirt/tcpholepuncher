@@ -3,6 +3,6 @@
 
 #define ECHO "echo-test"
 
-void    thp_print();
+void    thp_list_test();
 
 #endif /* THP_H */

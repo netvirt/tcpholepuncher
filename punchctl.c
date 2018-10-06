@@ -4,5 +4,4 @@
 int main()
 {
     printf("Hello World\n");
-    thp_print();
 }

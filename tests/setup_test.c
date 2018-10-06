@@ -3,6 +3,6 @@
 
 int main()
 {
-    thp_print();
+    thp_list_test();
     return 0;
 }
