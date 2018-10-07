@@ -1,8 +1,10 @@
 ACLOCAL_AMFLAGS = -I m4 --install
 AM_CPPFLAGS = -I$(top_srcdir)/include 
+AM_CFLAGS = -I$(top_srcdir)/include 
 
 lib_LTLIBRARIES = libobj/libthp.la
 libobj_libthp_la_SOURCES =      src/log.c \
+                                src/thp_punch.c \
                                 src/thp_tests.c 
 							
 libobj_libthp_la_LIBADD = $(libevent_LIBS) \
