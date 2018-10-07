@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(thp)
 
+enable_testing()
+
 SET(CPACK_PACKAGE_VERSION "0.0.1")
 
 if(COMMAND cmake_policy)
@@ -22,3 +24,5 @@ set_target_properties(thp_static PROPERTIES OUTPUT_NAME thp)
 
 install(TARGETS thp_shared DESTINATION lib)
 install(FILES include/thp.h DESTINATION include)
+
+add_subdirectory(tests)
