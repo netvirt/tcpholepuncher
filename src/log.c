@@ -5,10 +5,10 @@
 
 #include <thp.h>
 
-static cb_log	 cb_log_warn = NULL;
+static thp_logcb	 cb_log_warn = NULL;
 
 void
-log_set_cb(cb_log log_warn)
+thp_log_setcb(thp_logcb log_warn)
 {
 	cb_log_warn = log_warn;
 }

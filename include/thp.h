@@ -3,8 +3,8 @@
 
 #include <stdarg.h>
 
-typedef void (*cb_log)(const char *);
+typedef void (*thp_logcb)(const char *);
 
-void	 log_set_cb(cb_log);
+void	 thp_log_setcb(thp_logcb);
 
 #endif
