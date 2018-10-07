@@ -81,3 +81,11 @@ include/*.o
 
 
 tests/unittests
+
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+tests/CMakeFiles/
+tests/CTestTestfile.cmake
+tests/cmake_install.cmake

@@ -4,8 +4,7 @@ AM_CFLAGS = -I$(top_srcdir)/include
 
 lib_LTLIBRARIES = libobj/libthp.la
 libobj_libthp_la_SOURCES =      src/log.c \
-                                src/thp_punch.c \
-                                src/thp_tests.c 
+                                src/punch.c 
 							
 libobj_libthp_la_LIBADD = $(libevent_LIBS) \
 			  -lssl -lcrypto \
@@ -22,7 +21,7 @@ punchctl_LDADD = $(lib_LTLIBRARIES) \
                  $(libevent_LIBS)
 
 noinst_PROGRAMS = tests/unittests
-tests_unittests_SOURCES = tests/unit_tests.c
+tests_unittests_SOURCES = tests/test_init.c
 tests_unittests_CFLAGS = -DDEBUG 
 tests_unittests_LDADD = $(lib_LTLIBRARIES) \
 	     $(libevent_LIBS) 
