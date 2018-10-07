@@ -17,7 +17,7 @@ log_01(const char *msg)
 
 int main()
 {
-	log_set_cb(log_01);
+	thp_log_setcb(log_01);
 	log_warn("%s", msg_01);
 
         return 0;
