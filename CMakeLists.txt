@@ -12,7 +12,7 @@ endif(COMMAND cmake_policy)
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
 set(THP_SRCS
-	src/thp_init.c
+	src/punch.c
 	src/log.c	
 )
 
