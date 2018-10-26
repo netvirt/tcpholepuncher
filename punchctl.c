@@ -84,6 +84,11 @@ int main(int argc, char *argv[])
 	}
 	event_add(ev_sigterm, NULL);
 
+	/* TODO:
+	 * add callbacks
+	 */
+	thp_punch_start(ev_base, host, ports, NULL, NULL);
+
 	event_base_dispatch(ev_base);
 
 	event_free(ev_sigint);

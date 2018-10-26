@@ -88,12 +88,27 @@ struct port_list *
 port_list_new(const char *ports)
 {
 	struct port_list	*l = NULL;
+	struct port		*p;
 
 	if ((l = malloc(sizeof(*l))) == NULL) {
 		log_warn("%s: malloc", __func__);
 		goto error;
 	}
 	LIST_INIT(l);
+
+	/* XXX hardcoded for testing */
+
+	p = port_new();
+	p->num = 8080;
+	p->str = strdup("8080");
+
+	LIST_INSERT_HEAD(l, p, entry);
+
+	p = port_new();
+	p->num = 9090;
+	p->str = strdup("9090");
+
+	LIST_INSERT_HEAD(l, p, entry);
 
 	/* TODO:
 	 * parse ports
@@ -190,7 +205,8 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = SOCK_STREAM;
 
-		if ((ret = getaddrinfo(ip, p->str, &hints, &ai)) != 0) {
+		/* listen on every interfaces */
+		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) != 0) {
 			log_warnx("%s: getaddrinfo: %s", __func__,
 			    gai_strerror(ret));
 			goto error;
