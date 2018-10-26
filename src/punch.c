@@ -171,7 +171,6 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 	struct thp_punch	*thp = NULL;
 	struct addrinfo		 hints, *ai = NULL;
 	int			 ret;
-	const char		*port;
 
 	ev_base = evb;
 
@@ -185,16 +184,17 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 		goto error;
 	}
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if ((ret = getaddrinfo(ip, port, &hints, &ai)) != 0) {
-		log_warnx("%s: getaddrinfo: %s", __func__, gai_strerror(ret));
-		goto error;
-	}
-
 	LIST_FOREACH(p, thp->ports, entry) {
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+
+		if ((ret = getaddrinfo(ip, p->str, &hints, &ai)) != 0) {
+			log_warnx("%s: getaddrinfo: %s", __func__,
+			    gai_strerror(ret));
+			goto error;
+		}
 
 		if ((p->listener = evconnlistener_new_bind(ev_base,
 		    listen_conn_cb, thp,
@@ -205,11 +205,12 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 		}
 
 		evconnlistener_set_error_cb(p->listener, listen_error_cb);
+		freeaddrinfo(ai);
+		ai = NULL;
 
 		/* TODO: connect() */
 	}
 
-	freeaddrinfo(ai);
 	return (thp);
 
 error:
