@@ -31,6 +31,7 @@ set(THP_CTL_SRC
 add_executable(punchctl ${THP_CTL_SRC})
 
 target_link_libraries(punchctl
+	event_core
 	thp_static)
 
 add_subdirectory(tests)
