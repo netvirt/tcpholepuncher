@@ -18,9 +18,11 @@ set(THP_SRCS
 
 add_library(thp_shared SHARED ${THP_SRCS})
 set_target_properties(thp_shared PROPERTIES OUTPUT_NAME thp)
+target_link_libraries(thp_shared event_core)
 
 add_library(thp_static STATIC ${THP_SRCS})
 set_target_properties(thp_static PROPERTIES OUTPUT_NAME thp)
+target_link_libraries(thp_static event_core)
 
 install(TARGETS thp_shared DESTINATION lib)
 install(FILES include/thp.h DESTINATION include)
