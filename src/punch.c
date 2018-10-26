@@ -7,39 +7,121 @@
 #include <thp.h>
 
 #include "log.h"
+#include "queue.h"
 
-struct thp_punch {
-	struct event	*timeout;
+LIST_HEAD(port_list, port);
+
+struct port {
+	LIST_ENTRY(port)	 entry;
+	struct evconnlistener	*listener;
+	int			 num;
+	char			*str;
 };
 
-static struct evconnlistener	*listener = NULL;
+struct thp_punch {
+	struct port_list	*ports;
+	struct event		*timeout;
+};
+
 static struct event_base	*ev_base = NULL;
 
-static void		 thp_punch_timeout_cb(int, short, void *);
-static void		 thp_punch_free();
-static struct thp_punch	*thp_punch_new();
+static void		 port_free();
+static struct port	*port_new();
+static void		 port_list_free(struct port_list *);
+static struct port_list *port_list_new(const char *);
+static void		 punch_timeout_cb(int, short, void *);
+static void		 punch_free();
+static struct thp_punch	*punch_new();
 static void		 listen_error_cb(struct evconnlistener *, void *);
 static void		 listen_conn_cb(struct evconnlistener *, int,
 			    struct sockaddr *, int, void *);
+
+struct port *
+port_new()
+{
+	struct port	*p = NULL;
+
+	if ((p = malloc(sizeof(*p))) == NULL) {
+		log_warn("%s: malloc", __func__);
+		goto error;
+	}
+	p->listener = NULL;
+	p->str = NULL;
+
+	return (p);
+
+error:
+	port_free(p);
+	return (NULL);
+}
+
 void
-thp_punch_timeout_cb(int fd, short event, void *arg)
+port_free(struct port *p)
+{
+	if (p == NULL)
+		return;
+}
+
+void
+port_list_free(struct port_list *l)
+{
+	struct port	*p;
+
+	if (l == NULL)
+		return;
+
+	while (!LIST_EMPTY(l)) {
+		p = LIST_FIRST(l);
+		LIST_REMOVE(p, entry);
+		port_free(p);
+	}
+
+	free(l);
+}
+
+struct port_list *
+port_list_new(const char *ports)
+{
+	struct port_list	*l = NULL;
+
+	if ((l = malloc(sizeof(*l))) == NULL) {
+		log_warn("%s: malloc", __func__);
+		goto error;
+	}
+	LIST_INIT(l);
+
+	/* TODO:
+	 * parse ports
+	 * port_new() LIST_INSERT_HEAD()
+	 */
+
+	return (l);
+
+error:
+	port_list_free(l);
+	return (NULL);
+}
+
+void
+punch_timeout_cb(int fd, short event, void *arg)
 {
 
 }
 
 void
-thp_punch_free(struct thp_punch *thp)
+punch_free(struct thp_punch *thp)
 {
 	if (thp == NULL)
 		return;
 
 	event_free(thp->timeout);
+	port_list_free(thp->ports);
 
 	free(thp);
 }
 
 struct thp_punch *
-thp_punch_new()
+punch_new()
 {
 	struct thp_punch	*thp;
 
@@ -48,9 +130,10 @@ thp_punch_new()
 		goto error;
 	}
 	thp->timeout = NULL;
+	thp->ports = NULL;
 
 	if ((thp->timeout = evtimer_new(ev_base,
-	    thp_punch_timeout_cb, thp)) == NULL) {
+	    punch_timeout_cb, thp)) == NULL) {
 		log_warnx("%s: evtimer_new", __func__);
 		goto error;
 	}
@@ -58,7 +141,7 @@ thp_punch_new()
 	return (thp);
 
 error:
-	thp_punch_free(thp);
+	punch_free(thp);
 	return (NULL);
 }
 
@@ -79,6 +162,7 @@ struct thp_punch *
 thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 	    thp_punch_cb cb, void *data)
 {
+	struct port		*p;
 	struct thp_punch	*thp = NULL;
 	struct addrinfo		 hints, *ai = NULL;
 	int			 ret;
@@ -86,15 +170,16 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 
 	ev_base = evb;
 
-	if ((thp = thp_punch_new()) == NULL) {
-		log_warnx("%s: thp_punch_new", __func__);
+	if ((thp = punch_new()) == NULL) {
+		log_warnx("%s: punch_new", __func__);
 		goto error;
 	}
 
-	/* TODO:
-	 * parse ports and create a list
-	 * iterate the list and create listener for every port
-	 */
+	if ((thp->ports = port_list_new(ports)) == NULL) {
+		log_warnx("%s: port_list_new: %s", __func__);
+		goto error;
+	}
+
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -104,20 +189,27 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 		goto error;
 	}
 
-	if ((listener = evconnlistener_new_bind(ev_base, listen_conn_cb, thp,
-	    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, -1,
-	    ai->ai_addr, ai->ai_addrlen)) == NULL) {
-		log_warnx("%s: evconnlistener_new_bind", __func__);
-		goto error;
+	LIST_FOREACH(p, thp->ports, entry) {
+
+		if ((p->listener = evconnlistener_new_bind(ev_base,
+		    listen_conn_cb, thp,
+		    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, -1,
+		    ai->ai_addr, ai->ai_addrlen)) == NULL) {
+			log_warnx("%s: evconnlistener_new_bind", __func__);
+			goto error;
+		}
+
+		evconnlistener_set_error_cb(p->listener, listen_error_cb);
+
+		/* TODO: connect() */
 	}
 
-	evconnlistener_set_error_cb(listener, listen_error_cb);
 	freeaddrinfo(ai);
 	return (thp);
 
 error:
 	freeaddrinfo(ai);
-	thp_punch_free(thp);
+	punch_free(thp);
         return (NULL);
 }
 
