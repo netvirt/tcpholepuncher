@@ -60,6 +60,11 @@ port_free(struct port *p)
 {
 	if (p == NULL)
 		return;
+
+	if (p->listener != NULL)
+		evconnlistener_free(p->listener);
+	free(p->str);
+	free(p);
 }
 
 void
