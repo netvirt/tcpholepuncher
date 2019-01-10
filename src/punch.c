@@ -236,7 +236,13 @@ error:
 }
 
 void
-thp_punch_stop(struct thp_punch *p)
+thp_punch_stop(struct thp_punch *thp)
 {
+	if (thp == NULL)
+		return;
+
+	/* XXX Stop everything */
+	punch_free(thp);
+
         return;
 }

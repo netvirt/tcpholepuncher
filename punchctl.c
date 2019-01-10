@@ -34,11 +34,12 @@ sighandler(int signal, short events, void *arg)
 
 int main(int argc, char *argv[])
 {
-	struct event	*ev_sigint;
-	struct event	*ev_sigterm;
-	int		 ch;
-	char		*host = NULL;
-	char		*ports = NULL;
+	struct thp_punch	*thp;
+	struct event		*ev_sigint;
+	struct event		*ev_sigterm;
+	int			 ch;
+	char			*host = NULL;
+	char			*ports = NULL;
 
 	while ((ch = getopt(argc, argv, "hc:p:")) != -1) {
 		switch(ch) {
@@ -87,9 +88,14 @@ int main(int argc, char *argv[])
 	/* TODO:
 	 * add callbacks
 	 */
-	thp_punch_start(ev_base, host, ports, NULL, NULL);
+	if ((thp = thp_punch_start(ev_base, host, ports, NULL, NULL)) == NULL) {
+		fprintf(stderr, "%s: thp_punch_start\n", __func__);
+		exit(-1);
+	}
 
 	event_base_dispatch(ev_base);
+
+	thp_punch_stop(thp);
 
 	event_free(ev_sigint);
 	event_free(ev_sigterm);
