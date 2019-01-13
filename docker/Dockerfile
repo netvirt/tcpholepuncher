@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install -y \
 	ca-certificates \
 	checkinstall \
 	intltool \
-	valgrind
+	valgrind \
+        cmake
 
 ADD build.sh /opt/
 ADD entrypoint /opt/
