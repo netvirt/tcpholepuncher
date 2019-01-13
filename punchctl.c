@@ -18,7 +18,7 @@ usage(void)
 	extern char	*__progname;
 	fprintf(stdout, "usage: %s\n"
 	    "\t-c\thost address\n"
-	    "\t-p\tports i.e: 80,81,443,5000-6000\n"
+	    "\t-p\tports i.e: 80,81,443,1000\n"
 	    "\t-h\thelp\n", __progname);
 	exit(1);
 }
