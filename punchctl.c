@@ -32,6 +32,12 @@ sighandler(int signal, short events, void *arg)
 	event_base_loopbreak(arg);
 }
 
+void
+punch_cb(int event, int fd, void *arg)
+{
+	printf("punch cb! %d\n", socket);
+}
+
 int main(int argc, char *argv[])
 {
 	struct thp_punch	*thp;
@@ -85,10 +91,7 @@ int main(int argc, char *argv[])
 	}
 	event_add(ev_sigterm, NULL);
 
-	/* TODO:
-	 * add callbacks
-	 */
-	if ((thp = thp_punch_start(ev_base, host, ports, NULL, NULL)) == NULL) {
+	if ((thp = thp_punch_start(ev_base, host, ports, punch_cb, NULL)) == NULL) {
 		fprintf(stderr, "%s: thp_punch_start\n", __func__);
 		exit(-1);
 	}
