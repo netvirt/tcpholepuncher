@@ -16,11 +16,13 @@ struct port {
 	struct evconnlistener	*listener;
 	unsigned long		 num;
 	char			 str[6];
+	void			*arg;
 };
 
 struct thp_punch {
 	struct port_list	*ports;
 	struct event		*timeout;
+	thp_punch_cb		 cb;
 };
 
 static struct event_base	*ev_base = NULL;
@@ -166,6 +168,10 @@ error:
 void
 listen_error_cb(struct evconnlistener *l, void *arg)
 {
+	struct port	*p = arg;
+
+	/* TODO stop that listener */
+
 	return;
 }
 
@@ -174,11 +180,21 @@ listen_conn_cb(struct evconnlistener *l, int fd,
     struct sockaddr *address, int socklen, void *arg)
 {
 
+	struct port		*p = arg;
+	struct thp_punch	*thp = NULL;
+
+	thp = p->arg;
+
+	/* TODO stop every listener via thp->ports */
+
+	/* TODO pass the event */
+	if (thp->cb != NULL)
+		thp->cb(0, fd, arg);
 }
 
 struct thp_punch *
 thp_punch_start(struct event_base *evb, const char *ip, char *ports,
-	    thp_punch_cb cb, void *data)
+	    thp_punch_cb cb, void *arg)
 {
 	struct port		*p;
 	struct thp_punch	*thp = NULL;
@@ -197,6 +213,8 @@ thp_punch_start(struct event_base *evb, const char *ip, char *ports,
 		goto error;
 	}
 
+	thp->cb = cb;
+
 	LIST_FOREACH(p, thp->ports, entry) {
 
 		memset(&hints, 0, sizeof(hints));
@@ -210,9 +228,10 @@ thp_punch_start(struct event_base *evb, const char *ip, char *ports,
 			goto error;
 		}
 
+		p->arg = thp;
+
 		if ((p->listener = evconnlistener_new_bind(ev_base,
-		    listen_conn_cb, thp,
-		    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, -1,
+		    listen_conn_cb, p, LEV_OPT_REUSEABLE, -1,
 		    ai->ai_addr, ai->ai_addrlen)) == NULL) {
 			log_warnx("%s: evconnlistener_new_bind", __func__);
 			goto error;
@@ -239,7 +258,7 @@ thp_punch_stop(struct thp_punch *thp)
 	if (thp == NULL)
 		return;
 
-	/* XXX Stop everything */
+	/* TODO stop everything */
 	punch_free(thp);
 
         return;

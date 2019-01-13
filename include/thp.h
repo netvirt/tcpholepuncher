@@ -6,7 +6,7 @@
 struct thp_punch;
 
 typedef void (*thp_logcb)(const char *);
-typedef void (*thp_punch_cb)(int, int, void *);	/* event, socket, data */
+typedef void (*thp_punch_cb)(int, int, void *);	/* event, fd, arg */
 
 void			 thp_log_setcb(thp_logcb);
 struct thp_punch        *thp_punch_start(struct event_base *, const char *, char *,
