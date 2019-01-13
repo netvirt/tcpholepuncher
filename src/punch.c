@@ -14,8 +14,8 @@ LIST_HEAD(port_list, port);
 struct port {
 	LIST_ENTRY(port)	 entry;
 	struct evconnlistener	*listener;
-	int			 num;
-	char			*str;
+	unsigned long		 num;
+	char			 str[6];
 };
 
 struct thp_punch {
@@ -26,9 +26,9 @@ struct thp_punch {
 static struct event_base	*ev_base = NULL;
 
 static void		 port_free();
-static struct port	*port_new();
+static struct port	*port_new(const char *);
 static void		 port_list_free(struct port_list *);
-static struct port_list *port_list_new(const char *);
+static struct port_list *port_list_new(char *);
 static void		 punch_timeout_cb(int, short, void *);
 static void		 punch_free();
 static struct thp_punch	*punch_new();
@@ -37,16 +37,26 @@ static void		 listen_conn_cb(struct evconnlistener *, int,
 			    struct sockaddr *, int, void *);
 
 struct port *
-port_new()
+port_new(const char *port_str)
 {
 	struct port	*p = NULL;
+	const char	*errstr;
 
 	if ((p = malloc(sizeof(*p))) == NULL) {
 		log_warn("%s: malloc", __func__);
 		goto error;
 	}
 	p->listener = NULL;
-	p->str = NULL;
+
+	if (port_str != NULL) {
+		p->num = strtonum(port_str, 1, 65535, &errstr);
+		if (errstr != NULL)
+			goto error;
+
+		if (snprintf(p->str, sizeof(p->str), port_str)
+		    >= sizeof(p->str))
+			goto error;
+	}
 
 	return (p);
 
@@ -63,7 +73,6 @@ port_free(struct port *p)
 
 	if (p->listener != NULL)
 		evconnlistener_free(p->listener);
-	free(p->str);
 	free(p);
 }
 
@@ -85,10 +94,11 @@ port_list_free(struct port_list *l)
 }
 
 struct port_list *
-port_list_new(const char *ports)
+port_list_new(char *ports)
 {
 	struct port_list	*l = NULL;
 	struct port		*p;
+	char			*port, *last;
 
 	if ((l = malloc(sizeof(*l))) == NULL) {
 		log_warn("%s: malloc", __func__);
@@ -96,24 +106,12 @@ port_list_new(const char *ports)
 	}
 	LIST_INIT(l);
 
-	/* XXX hardcoded for testing */
-
-	p = port_new();
-	p->num = 8080;
-	p->str = strdup("8080");
-
-	LIST_INSERT_HEAD(l, p, entry);
-
-	p = port_new();
-	p->num = 9090;
-	p->str = strdup("9090");
-
-	LIST_INSERT_HEAD(l, p, entry);
-
-	/* TODO:
-	 * parse ports
-	 * port_new() LIST_INSERT_HEAD()
-	 */
+	for ((port = strtok_r(ports, ",", &last)); port;
+	    (port = strtok_r(NULL, ",", &last))) {
+		if ((p = port_new(port)) == NULL)
+			goto error;
+		LIST_INSERT_HEAD(l, p, entry);
+	}
 
 	return (l);
 
@@ -179,7 +177,7 @@ listen_conn_cb(struct evconnlistener *l, int fd,
 }
 
 struct thp_punch *
-thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
+thp_punch_start(struct event_base *evb, const char *ip, char *ports,
 	    thp_punch_cb cb, void *data)
 {
 	struct port		*p;
@@ -195,7 +193,7 @@ thp_punch_start(struct event_base *evb, const char *ip, const char *ports,
 	}
 
 	if ((thp->ports = port_list_new(ports)) == NULL) {
-		log_warnx("%s: port_list_new: %s", __func__);
+		log_warnx("%s: port_list_new", __func__);
 		goto error;
 	}
 

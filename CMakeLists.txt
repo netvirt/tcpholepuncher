@@ -13,7 +13,8 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 
 set(THP_SRCS
 	src/punch.c
-	src/log.c	
+	src/log.c
+	src/strtonum.c
 )
 
 add_library(thp_shared SHARED ${THP_SRCS})
