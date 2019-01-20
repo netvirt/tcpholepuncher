@@ -196,12 +196,10 @@ listen_conn_cb(struct evconnlistener *l, int fd,
 
 	thp = p->arg;
 
-	/* TODO stop every listener via thp->ports */
 	punch_stop(thp);
 
-	/* TODO pass the event */
 	if (thp->cb != NULL)
-		thp->cb(0, fd, arg);
+		thp->cb(0, fd, arg); /* event is 0 for now */
 }
 
 struct thp_punch *
