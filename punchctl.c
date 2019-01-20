@@ -35,7 +35,7 @@ sighandler(int signal, short events, void *arg)
 void
 punch_cb(int event, int fd, void *arg)
 {
-	printf("punch cb! %d\n", socket);
+	printf("punch cb! %d\n", fd);
 }
 
 int main(int argc, char *argv[])
@@ -91,14 +91,14 @@ int main(int argc, char *argv[])
 	}
 	event_add(ev_sigterm, NULL);
 
-	if ((thp = thp_punch_start(ev_base, host, ports, punch_cb, NULL)) == NULL) {
+	if ((thp = thp_punch_new(ev_base, host, ports, punch_cb, NULL)) == NULL) {
 		fprintf(stderr, "%s: thp_punch_start\n", __func__);
 		exit(-1);
 	}
 
 	event_base_dispatch(ev_base);
 
-	thp_punch_stop(thp);
+	thp_punch_free(thp);
 
 	event_free(ev_sigint);
 	event_free(ev_sigterm);

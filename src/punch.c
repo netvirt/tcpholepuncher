@@ -34,6 +34,7 @@ static struct port_list *port_list_new(char *);
 static void		 punch_timeout_cb(int, short, void *);
 static void		 punch_free();
 static struct thp_punch	*punch_new();
+static void		 punch_stop(struct thp_punch *);
 static void		 listen_error_cb(struct evconnlistener *, void *);
 static void		 listen_conn_cb(struct evconnlistener *, int,
 			    struct sockaddr *, int, void *);
@@ -166,6 +167,16 @@ error:
 }
 
 void
+punch_stop(struct thp_punch *thp)
+{
+	struct port	*p;
+
+	LIST_FOREACH(p, thp->ports, entry) {
+		evconnlistener_disable(p->listener);
+	}
+}
+
+void
 listen_error_cb(struct evconnlistener *l, void *arg)
 {
 	struct port	*p = arg;
@@ -186,6 +197,7 @@ listen_conn_cb(struct evconnlistener *l, int fd,
 	thp = p->arg;
 
 	/* TODO stop every listener via thp->ports */
+	punch_stop(thp);
 
 	/* TODO pass the event */
 	if (thp->cb != NULL)
@@ -193,7 +205,7 @@ listen_conn_cb(struct evconnlistener *l, int fd,
 }
 
 struct thp_punch *
-thp_punch_start(struct event_base *evb, const char *ip, char *ports,
+thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 	    thp_punch_cb cb, void *arg)
 {
 	struct port		*p;
@@ -253,12 +265,12 @@ error:
 }
 
 void
-thp_punch_stop(struct thp_punch *thp)
+thp_punch_free(struct thp_punch *thp)
 {
 	if (thp == NULL)
 		return;
 
-	/* TODO stop everything */
+	punch_stop(thp);
 	punch_free(thp);
 
         return;
