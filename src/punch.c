@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/listener.h>
 
@@ -14,6 +15,7 @@ LIST_HEAD(port_list, port);
 struct port {
 	LIST_ENTRY(port)	 entry;
 	struct evconnlistener	*listener;
+	struct bufferevent	*client_bev;
 	unsigned long		 num;
 	char			 str[6];
 	void			*arg;
@@ -35,6 +37,7 @@ static void		 punch_timeout_cb(int, short, void *);
 static void		 punch_free();
 static struct thp_punch	*punch_new();
 static void		 punch_stop(struct thp_punch *);
+static void		 peer_event_cb(struct bufferevent *, short, void *);
 static void		 listen_error_cb(struct evconnlistener *, void *);
 static void		 listen_conn_cb(struct evconnlistener *, int,
 			    struct sockaddr *, int, void *);
@@ -177,6 +180,20 @@ punch_stop(struct thp_punch *thp)
 }
 
 void
+peer_event_cb(struct bufferevent *bev, short events, void *arg)
+{
+
+	if (events & BEV_EVENT_CONNECTED) {
+
+		printf("connected\n");
+
+	} else if (events & (BEV_EVENT_TIMEOUT | BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
+
+		printf("peer event problem\n");
+	}
+}
+
+void
 listen_error_cb(struct evconnlistener *l, void *arg)
 {
 	struct port	*p = arg;
@@ -209,7 +226,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 	struct port		*p;
 	struct thp_punch	*thp = NULL;
 	struct addrinfo		 hints, *ai = NULL;
-	int			 ret;
+	int			 ret, flag, sock;
 
 	ev_base = evb;
 
@@ -227,18 +244,18 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 
 	LIST_FOREACH(p, thp->ports, entry) {
 
+		p->arg = thp;
+
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = SOCK_STREAM;
 
 		/* listen on every interfaces */
-		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) != 0) {
+		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) < 0) {
 			log_warnx("%s: getaddrinfo: %s", __func__,
 			    gai_strerror(ret));
 			goto error;
 		}
-
-		p->arg = thp;
 
 		if ((p->listener = evconnlistener_new_bind(ev_base,
 		    listen_conn_cb, p, LEV_OPT_REUSEABLE, -1,
@@ -246,12 +263,43 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 			log_warnx("%s: evconnlistener_new_bind", __func__);
 			goto error;
 		}
-
 		evconnlistener_set_error_cb(p->listener, listen_error_cb);
 		freeaddrinfo(ai);
-		ai = NULL;
 
-		/* TODO: connect() */
+		/* connect to ever port */
+		if ((ret = getaddrinfo(ip, p->str, &hints, &ai)) < 0) {
+			log_warnx("%s: getaddrinfo: %s", __func__,
+			    gai_strerror(ret));
+			goto error;
+		}
+
+		if ((sock = socket(ai->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+			log_warn("%s: socket", __func__);
+			goto error;
+		}
+
+		flag = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag)) < 0) {
+			log_warn("%s: setsockopt", __func__);
+			goto error;
+		}
+
+		if (evutil_make_socket_nonblocking(sock) < 0) {
+			log_warn("%s: evutil_make_socket_nonblocking", __func__);
+			goto error;
+		}
+
+		if ((p->client_bev = bufferevent_socket_new(ev_base, sock, 0)) == NULL) {
+			log_warnx("%s: bufferevent_socket_new", __func__);
+			goto error;
+		}
+		bufferevent_setcb(p->client_bev, NULL, NULL, peer_event_cb, thp);
+
+		if (bufferevent_socket_connect(p->client_bev, ai->ai_addr, ai->ai_addrlen) < 0) {
+			log_warnx("%s: bufferevent_socket_connected", __func__);
+			goto error;
+		}
+		freeaddrinfo(ai);
 	}
 
 	return (thp);
