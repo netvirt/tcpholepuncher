@@ -314,7 +314,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 
 		setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
 
-		if ((ret = bind(sock,(struct sockaddr *)aai->ai_addr, aai->ai_addrlen)) < 0) {
+		if ((ret = bind(sock, (struct sockaddr *)aai->ai_addr, aai->ai_addrlen)) < 0) {
 			log_warn("%s: bind", __func__);
 			goto error;
 		}
