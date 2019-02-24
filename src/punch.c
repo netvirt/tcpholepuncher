@@ -253,6 +253,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		hints.ai_flags = AI_PASSIVE;
 
 		/* listen on every interfaces */
+/*
 		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) < 0) {
 			log_warnx("%s: getaddrinfo: %s", __func__,
 			    gai_strerror(ret));
@@ -283,7 +284,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		}
 		evconnlistener_set_error_cb(p->listener, listen_error_cb);
 		freeaddrinfo(ai);
-
+*/
 		/* connect to ever port */
 		if ((ret = getaddrinfo(ip, p->str, &hints, &ai)) < 0) {
 			log_warnx("%s: getaddrinfo: %s", __func__,
@@ -313,6 +314,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		}
 
 		setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+		setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 		if ((ret = bind(sock, (struct sockaddr *)aai->ai_addr, aai->ai_addrlen)) < 0) {
 			log_warn("%s: bind", __func__);
