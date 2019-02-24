@@ -225,8 +225,9 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 {
 	struct port		*p;
 	struct thp_punch	*thp = NULL;
-	struct addrinfo		 hints, *ai = NULL;
-	int			 ret, flag, sock;
+	struct addrinfo		 hints, *ai = NULL, *aai = NULL;
+	int			 ret, sock;
+	int			 on = 1;
 
 	ev_base = evb;
 
@@ -249,6 +250,7 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags = AI_PASSIVE;
 
 		/* listen on every interfaces */
 		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) < 0) {
@@ -257,9 +259,25 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 			goto error;
 		}
 
-		if ((p->listener = evconnlistener_new_bind(ev_base,
-		    listen_conn_cb, p, LEV_OPT_REUSEABLE, -1,
-		    ai->ai_addr, ai->ai_addrlen)) == NULL) {
+		if ((sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) < 0) {
+			log_warn("%s: socket", __func__);
+			goto error;
+		}
+
+		setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+
+		if ((ret = bind(sock, (struct sockaddr *)ai->ai_addr, ai->ai_addrlen)) < 0) {
+			log_warn("%s:  1 bind", __func__);
+			goto error;
+		}
+
+		if (evutil_make_socket_nonblocking(sock) < 0) {
+			log_warn("%s: evutil_make_socket_nonblocking", __func__);
+			goto error;
+		}
+
+		if ((p->listener = evconnlistener_new(ev_base,
+		    listen_conn_cb, p, LEV_OPT_REUSEABLE, -1, sock)) == NULL) {
 			log_warnx("%s: evconnlistener_new_bind", __func__);
 			goto error;
 		}
@@ -278,14 +296,26 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 			goto error;
 		}
 
-		flag = 1;
-		if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag)) < 0) {
+		if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
 			log_warn("%s: setsockopt", __func__);
 			goto error;
 		}
 
 		if (evutil_make_socket_nonblocking(sock) < 0) {
 			log_warn("%s: evutil_make_socket_nonblocking", __func__);
+			goto error;
+		}
+
+		if ((ret = getaddrinfo(NULL, p->str, &hints, &aai)) < 0) {
+			log_warnx("%s: getaddrinfo: %s", __func__,
+			    gai_strerror(ret));
+			goto error;
+		}
+
+		setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+
+		if ((ret = bind(sock,(struct sockaddr *)aai->ai_addr, aai->ai_addrlen)) < 0) {
+			log_warn("%s: bind", __func__);
 			goto error;
 		}
 
@@ -300,12 +330,14 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 			goto error;
 		}
 		freeaddrinfo(ai);
+		freeaddrinfo(aai);
 	}
 
 	return (thp);
 
 error:
 	freeaddrinfo(ai);
+	freeaddrinfo(aai);
 	punch_free(thp);
         return (NULL);
 }
