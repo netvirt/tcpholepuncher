@@ -3,7 +3,6 @@
 
 #include <event2/bufferevent.h>
 #include <event2/event.h>
-#include <event2/listener.h>
 
 #include <thp.h>
 
@@ -14,7 +13,6 @@ LIST_HEAD(port_list, port);
 
 struct port {
 	LIST_ENTRY(port)	 entry;
-	struct evconnlistener	*listener;
 	struct bufferevent	*client_bev;
 	unsigned long		 num;
 	char			 str[6];
@@ -38,9 +36,6 @@ static void		 punch_free();
 static struct thp_punch	*punch_new();
 static void		 punch_stop(struct thp_punch *);
 static void		 peer_event_cb(struct bufferevent *, short, void *);
-static void		 listen_error_cb(struct evconnlistener *, void *);
-static void		 listen_conn_cb(struct evconnlistener *, int,
-			    struct sockaddr *, int, void *);
 
 struct port *
 port_new(const char *port_str)
@@ -52,7 +47,7 @@ port_new(const char *port_str)
 		log_warn("%s: malloc", __func__);
 		goto error;
 	}
-	p->listener = NULL;
+	p->client_bev = NULL;
 
 	if (port_str != NULL) {
 		p->num = strtonum(port_str, 1, 65535, &errstr);
@@ -77,8 +72,7 @@ port_free(struct port *p)
 	if (p == NULL)
 		return;
 
-	if (p->listener != NULL)
-		evconnlistener_free(p->listener);
+	/* TODO close socket and clienet_bev */
 	free(p);
 }
 
@@ -175,7 +169,6 @@ punch_stop(struct thp_punch *thp)
 	struct port	*p;
 
 	LIST_FOREACH(p, thp->ports, entry) {
-		evconnlistener_disable(p->listener);
 	}
 }
 
@@ -191,32 +184,6 @@ peer_event_cb(struct bufferevent *bev, short events, void *arg)
 
 		printf("peer event problem\n");
 	}
-}
-
-void
-listen_error_cb(struct evconnlistener *l, void *arg)
-{
-	struct port	*p = arg;
-
-	/* TODO stop that listener */
-
-	return;
-}
-
-void
-listen_conn_cb(struct evconnlistener *l, int fd,
-    struct sockaddr *address, int socklen, void *arg)
-{
-
-	struct port		*p = arg;
-	struct thp_punch	*thp = NULL;
-
-	thp = p->arg;
-
-	punch_stop(thp);
-
-	if (thp->cb != NULL)
-		thp->cb(0, fd, arg); /* event is 0 for now */
 }
 
 struct thp_punch *
@@ -252,39 +219,6 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		hints.ai_socktype = SOCK_STREAM;
 		hints.ai_flags = AI_PASSIVE;
 
-		/* listen on every interfaces */
-/*
-		if ((ret = getaddrinfo("0.0.0.0", p->str, &hints, &ai)) < 0) {
-			log_warnx("%s: getaddrinfo: %s", __func__,
-			    gai_strerror(ret));
-			goto error;
-		}
-
-		if ((sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) < 0) {
-			log_warn("%s: socket", __func__);
-			goto error;
-		}
-
-		setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
-
-		if ((ret = bind(sock, (struct sockaddr *)ai->ai_addr, ai->ai_addrlen)) < 0) {
-			log_warn("%s:  1 bind", __func__);
-			goto error;
-		}
-
-		if (evutil_make_socket_nonblocking(sock) < 0) {
-			log_warn("%s: evutil_make_socket_nonblocking", __func__);
-			goto error;
-		}
-
-		if ((p->listener = evconnlistener_new(ev_base,
-		    listen_conn_cb, p, LEV_OPT_REUSEABLE, -1, sock)) == NULL) {
-			log_warnx("%s: evconnlistener_new_bind", __func__);
-			goto error;
-		}
-		evconnlistener_set_error_cb(p->listener, listen_error_cb);
-		freeaddrinfo(ai);
-*/
 		/* connect to ever port */
 		if ((ret = getaddrinfo(ip, p->str, &hints, &ai)) < 0) {
 			log_warnx("%s: getaddrinfo: %s", __func__,
@@ -328,7 +262,8 @@ thp_punch_new(struct event_base *evb, const char *ip, char *ports,
 		bufferevent_setcb(p->client_bev, NULL, NULL, peer_event_cb, thp);
 
 		if (bufferevent_socket_connect(p->client_bev, ai->ai_addr, ai->ai_addrlen) < 0) {
-			log_warnx("%s: bufferevent_socket_connected", __func__);
+			log_warnx("%s: bufferevent_socket_connected: %s", __func__,
+			    evutil_socket_error_to_string(evutil_socket_geterror(sock)));
 			goto error;
 		}
 		freeaddrinfo(ai);
